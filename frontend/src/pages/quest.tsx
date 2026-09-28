@@ -48,7 +48,6 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
   const [isReportOpen, setIsReportOpen] = useState(false)
   const { addToast } = useToast()
   const { address } = useWallet()
-  const queryClient = useQueryClient()
 
   useReferralCapture(questId)
 
@@ -117,7 +116,7 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
   if (isLoading) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-20 text-center sm:px-6">
-        <PageMetadata {...questPageMeta(questId)} />
+        <PageMetadata title={`Quest #${questId}`} description="Loading quest data from chain..." />
         <LoadingState message="Loading quest data from chain..." />
       </div>
     )
@@ -135,22 +134,24 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
   }
 
   // Map milestones to the shape expected by section components
-  const mappedMilestones = milestones.map(m => ({
-    id: m.id,
-    questId: m.questId,
-    title: m.title,
-    description: m.description,
-    rewardAmount: Number(m.rewardAmount),
-    prerequisiteIds: m.prerequisiteIds,
-    deadline: m.deadline,
-  }))
+  const mappedMilestones = milestones
+    .filter(m => m.deadline !== undefined)
+    .map(m => ({
+      id: m.id,
+      questId: m.questId,
+      title: m.title,
+      description: m.description,
+      rewardAmount: Number(m.rewardAmount),
+      prerequisiteIds: m.prerequisiteIds,
+      deadline: m.deadline as number,
+    }))
 
   const { isQuestOwner } = disputes
 
   return (
     <div className="relative mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div className="bg-grid-dots pointer-events-none absolute inset-0 opacity-30" />
-      <PageMetadata {...questPageMeta(questId, quest.name, quest.description)} />
+      <PageMetadata title={quest.name} description={quest.description} />
 
       <QuestPanels
         questId={questId}
@@ -274,6 +275,7 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
         onRetryFailed={claims.handleRetryFailed}
         isRetrying={claims.isRetrying}
         isReportOpen={isReportOpen}
+        onOpenReport={() => setIsReportOpen(true)}
         onCloseReport={() => setIsReportOpen(false)}
         enrolleeToRemove={enrolleeToRemove}
         onCancelRemoveEnrollee={() => setEnrolleeToRemove(null)}
