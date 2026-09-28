@@ -130,7 +130,7 @@ export function Step3Review({ onComplete }: Step3ReviewProps) {
         for (let i = 0; i < totalMilestones; i++) {
           const m = step2Data.milestones[i]
           const rewardAmount = BigInt(m.rewardAmount) * 10n ** BigInt(verifiedToken.decimals)
-          await milestoneClient.createMilestoneWithPrerequisites(
+          await milestoneClient.createMilestoneWithPrereqs(
             address,
             questId,
             m.title,
