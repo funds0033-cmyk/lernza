@@ -2104,6 +2104,10 @@ impl QuestContract {
     ) -> Result<(), Error> {
         learner.require_auth();
         Self::require_not_paused(&env)?;
+        Self::load_quest(&env, quest_id)?;
+        if !Self::is_enrollee(env.clone(), quest_id, learner.clone())? {
+            return Err(Error::NotEnrolled);
+        }
         let key = DataKey::DismissedGuidance(learner, quest_id);
         env.storage().persistent().remove(&key);
         Ok(())

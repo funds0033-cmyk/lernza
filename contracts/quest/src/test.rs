@@ -2716,7 +2716,7 @@ fn test_join_quest_waitlist_when_full() {
     let enrollees = client.get_enrollees(&quest_id);
     assert_eq!(enrollees.len(), 2);
 
-    let waitlist = client.get_waitlist(&quest_id).unwrap();
+    let waitlist = client.get_waitlist(&quest_id);
     assert_eq!(waitlist.len(), 1);
     assert_eq!(waitlist.get(0).unwrap(), e3);
 }
@@ -2734,7 +2734,7 @@ fn test_join_quest_waitlist_fifo_order() {
     client.join_quest(&e2, &quest_id);
     client.join_quest(&e3, &quest_id);
 
-    let waitlist = client.get_waitlist(&quest_id).unwrap();
+    let waitlist = client.get_waitlist(&quest_id);
     assert_eq!(waitlist.get(0).unwrap(), e2);
     assert_eq!(waitlist.get(1).unwrap(), e3);
 }
@@ -2774,7 +2774,7 @@ fn test_promote_from_waitlist() {
     assert!(enrollees.contains(&e1));
     assert!(enrollees.contains(&e2));
 
-    let waitlist = client.get_waitlist(&quest_id).unwrap();
+    let waitlist = client.get_waitlist(&quest_id);
     assert_eq!(waitlist.len(), 0);
 }
 
@@ -2800,7 +2800,7 @@ fn test_remove_from_waitlist() {
 
     client.remove_from_waitlist(&quest_id, &e2);
 
-    let waitlist = client.get_waitlist(&quest_id).unwrap();
+    let waitlist = client.get_waitlist(&quest_id);
     assert_eq!(waitlist.len(), 0);
 }
 
@@ -2819,14 +2819,14 @@ fn test_get_waitlist_length() {
     let (env, client, owner, token) = setup();
     let quest_id = create_quest_with_cap(&env, &client, &owner, &token, 1);
 
-    assert_eq!(client.get_waitlist_length(&quest_id).unwrap(), 0);
+    assert_eq!(client.get_waitlist_length(&quest_id), 0);
 
     let e1 = Address::generate(&env);
     let e2 = Address::generate(&env);
     client.join_quest(&e1, &quest_id);
     client.join_quest(&e2, &quest_id);
 
-    assert_eq!(client.get_waitlist_length(&quest_id).unwrap(), 2);
+    assert_eq!(client.get_waitlist_length(&quest_id), 2);
 }
 
 #[test]
@@ -2843,7 +2843,7 @@ fn test_auto_promote_on_remove_enrollee() {
     client.join_quest(&e3, &quest_id);
 
     // e3 is on the waitlist
-    assert_eq!(client.get_waitlist_length(&quest_id).unwrap(), 1);
+    assert_eq!(client.get_waitlist_length(&quest_id), 1);
 
     // Remove e1 — e3 should be auto-promoted
     client.remove_enrollee(&quest_id, &e1);
@@ -2853,7 +2853,7 @@ fn test_auto_promote_on_remove_enrollee() {
     assert!(enrollees.contains(&e2));
     assert!(enrollees.contains(&e3));
 
-    let waitlist = client.get_waitlist(&quest_id).unwrap();
+    let waitlist = client.get_waitlist(&quest_id);
     assert_eq!(waitlist.len(), 0);
 }
 
@@ -3171,3 +3171,18 @@ fn test_reenroll_cooldown_owner_only_and_disablable() {
     client.set_enrollment_cooldown(&quest_id, &owner, &0);
     assert_eq!(client.get_enrollment_cooldown(&quest_id), None);
 }
+
+#[test]
+fn test_undismiss_dashboard_guidance_enrollment_check() {
+    let (env, client, owner, token) = setup();
+    let quest_id = create_quest_helper(&env, &client, &owner, &token);
+
+    let stranger = Address::generate(&env);
+    
+    // Attempting to undismiss dashboard guidance when not enrolled should fail.
+    assert_eq!(
+        client.try_undismiss_dashboard_guidance(&stranger, &quest_id),
+        Err(Ok(Error::NotEnrolled))
+    );
+}
+

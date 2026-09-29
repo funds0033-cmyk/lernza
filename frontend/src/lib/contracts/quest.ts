@@ -434,6 +434,7 @@ export class QuestClient {
       deadline: Number(r.deadline),
       maxEnrollees: r.max_enrollees ? Number(r.max_enrollees) : undefined,
       verified: !!r.verified,
+      prerequisiteQuestIds: Array.isArray(r.prerequisite_quest_ids) ? (r.prerequisite_quest_ids as unknown[]).map(Number) : [],
       metadataUri: r.metadata_uri ? String(r.metadata_uri) : undefined,
     }
   }
