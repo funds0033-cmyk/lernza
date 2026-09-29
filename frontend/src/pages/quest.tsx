@@ -490,6 +490,7 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
   if (isLoading) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-20 text-center sm:px-6">
+        <PageMetadata {...questPageMeta(questId)} />
         <LoadingState message="Loading quest data from chain..." />
       </div>
     )
@@ -522,6 +523,7 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
   return (
     <div className="relative mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div className="bg-grid-dots pointer-events-none absolute inset-0 opacity-30" />
+      <PageMetadata {...questPageMeta(questId, quest.name, quest.description)} />
 
       <QuestPanels
         questId={questId}
