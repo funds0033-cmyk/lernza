@@ -3171,3 +3171,45 @@ fn test_reenroll_cooldown_owner_only_and_disablable() {
     client.set_enrollment_cooldown(&quest_id, &owner, &0);
     assert_eq!(client.get_enrollment_cooldown(&quest_id), None);
 }
+
+// --- set_deadline past-timestamp validation (issue #1705) ---
+
+#[test]
+fn test_set_deadline_future_timestamp_succeeds() {
+    let (env, client, owner, token) = setup();
+    env.ledger().set_timestamp(1_000);
+    let quest_id = create_quest_helper(&env, &client, &owner, &token);
+    // Setting a deadline strictly in the future must succeed.
+    client.set_deadline(&quest_id, &2_000);
+    assert_eq!(client.get_quest(&quest_id).deadline, 2_000);
+}
+
+#[test]
+fn test_set_deadline_past_timestamp_returns_deadline_in_past() {
+    let (env, client, owner, token) = setup();
+    env.ledger().set_timestamp(1_000);
+    let quest_id = create_quest_helper(&env, &client, &owner, &token);
+    // deadline < current timestamp → DeadlineInPast
+    assert_eq!(
+        client.try_set_deadline(&quest_id, &999),
+        Err(Ok(Error::DeadlineInPast))
+    );
+    // deadline == current timestamp → also DeadlineInPast (not strictly future)
+    assert_eq!(
+        client.try_set_deadline(&quest_id, &1_000),
+        Err(Ok(Error::DeadlineInPast))
+    );
+}
+
+#[test]
+fn test_set_deadline_zero_clears_deadline() {
+    let (env, client, owner, token) = setup();
+    env.ledger().set_timestamp(1_000);
+    let quest_id = create_quest_helper(&env, &client, &owner, &token);
+    // First set a valid future deadline…
+    client.set_deadline(&quest_id, &2_000);
+    assert_eq!(client.get_quest(&quest_id).deadline, 2_000);
+    // …then clear it with 0; this must not be treated as a past deadline.
+    client.set_deadline(&quest_id, &0);
+    assert_eq!(client.get_quest(&quest_id).deadline, 0);
+}
