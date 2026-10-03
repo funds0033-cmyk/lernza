@@ -24,7 +24,7 @@ async function fetchWithConcurrency<T, R>(
 
 // frontend/src/pages/quest.tsx (wired to on-chain data)
 import { useState, useMemo, useCallback, useEffect } from "react"
-import { useQueryClient } from "@tanstack/react-query"
+import { useQueryClient, useQuery } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
 import { useWallet } from "@/hooks/use-wallet"
 import {
@@ -40,7 +40,7 @@ import type { DisputeOutcome } from "@/lib/contracts/milestone-client"
 import { questClient } from "@/lib/contracts/quest"
 import { PageMetadata } from "@/components/PageMetadata"
 import { buildQuestMetadata } from "@/lib/questMetadata"
-import type { QuestInfo } from "@/lib/contract-types"
+import { QuestStatus, type QuestInfo } from "@/lib/contract-types"
 import { TabsNavigation, type QuestTab } from "@/components/quest/TabsNavigation"
 import { TimelineSection } from "@/components/quest/TimelineSection"
 import { ReferralCard } from "@/components/referral/ReferralCard"
@@ -79,6 +79,23 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
   useReferralCapture(questId)
 
   const { data: quest, isLoading: questLoading, error: questError } = useQuest(questId)
+  
+  const { data: prerequisitesMet = true, isLoading: prerequisitesLoading } = useQuery({
+    queryKey: ["prerequisitesMet", quest?.id, address],
+    queryFn: async () => {
+      if (!address || !quest?.prerequisiteQuestIds?.length) return true
+      for (const reqId of quest.prerequisiteQuestIds) {
+        const reqMilestones = await milestoneClient.listMilestones(reqId)
+        if (reqMilestones.length === 0) return false
+        const reqCompletions = await milestoneClient.getEnrolleeCompletions(reqId, address)
+        const allCompleted = reqMilestones.every((_, i) => reqCompletions[i])
+        if (!allCompleted) return false
+      }
+      return true
+    },
+    enabled: !!address && !!quest?.prerequisiteQuestIds?.length,
+  })
+
   const {
     data: milestonesData,
     isLoading: milestonesLoading,
@@ -467,12 +484,13 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
 
   const handleCloseClaimDialog = () => setIsClaimDialogOpen(false)
 
-  const isLoading = questLoading || milestonesLoading || enrolleesLoading
+  const isLoading = questLoading || milestonesLoading || enrolleesLoading || prerequisitesLoading
   const error = questError || milestonesError || enrolleesError
 
   if (isLoading) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-20 text-center sm:px-6">
+        <PageMetadata {...questPageMeta(questId)} />
         <LoadingState message="Loading quest data from chain..." />
       </div>
     )
@@ -505,13 +523,17 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
   return (
     <div className="relative mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div className="bg-grid-dots pointer-events-none absolute inset-0 opacity-30" />
+      <PageMetadata {...questPageMeta(questId, quest.name, quest.description)} />
 
       <QuestPanels
         questId={questId}
         questName={quest.name}
         questDescription={quest.description}
         isComplete={isComplete}
-        isArchived={quest.status === 1 || String(quest.status) === "Archived"}
+        isArchived={quest.status === QuestStatus.Archived || quest.status === QuestStatus.Cancelled}
+        isSuspended={quest.status === QuestStatus.Suspended}
+        isEnrollDisabled={!prerequisitesMet}
+        enrollDisabledReason={!prerequisitesMet ? "You must complete prerequisite quests before enrolling." : undefined}
         onBack={onBack}
         onAddEnrollee={handleAddEnrollee}
         onAddMilestone={handleAddMilestone}
