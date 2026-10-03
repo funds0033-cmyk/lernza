@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react"
+import { type QueryClient } from "@tanstack/react-query"
 import { questClient } from "@/lib/contracts/quest"
 import { recordReferralEnrollment } from "@/lib/referrals"
 import type { useToast } from "@/hooks/use-toast"
@@ -8,6 +9,7 @@ export interface UseEnrolleeActionsParams {
   address?: string
   quest?: { owner: string } | null
   addToast: ReturnType<typeof useToast>["addToast"]
+  queryClient: QueryClient
 }
 
 export interface UseEnrolleeActionsReturn {
@@ -26,6 +28,7 @@ export function useEnrolleeActions({
   address,
   quest,
   addToast,
+  queryClient,
 }: UseEnrolleeActionsParams): UseEnrolleeActionsReturn {
   const [enrolleeToRemove, setEnrolleeToRemove] = useState<{ address: string } | null>(null)
 
