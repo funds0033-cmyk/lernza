@@ -60,9 +60,11 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
       for (const reqId of quest.prerequisiteQuestIds) {
         const reqMilestones = await milestoneClient.getMilestones(reqId)
         if (reqMilestones.length === 0) return false
-        const reqCompletions = await milestoneClient.getEnrolleeCompletions(reqId, address)
-        const allCompleted = reqMilestones.every((_, i: number) => reqCompletions[i] === true)
-        if (!allCompleted) return false
+        // Check each milestone is completed
+        for (const reqMilestone of reqMilestones) {
+          const isCompleted = await milestoneClient.isCompleted(reqId, reqMilestone.id, address)
+          if (!isCompleted) return false
+        }
       }
       return true
     },
