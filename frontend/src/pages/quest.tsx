@@ -61,7 +61,7 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
         const reqMilestones = await milestoneClient.getMilestones(reqId)
         if (reqMilestones.length === 0) return false
         const reqCompletions = await milestoneClient.getEnrolleeCompletions(reqId, address)
-        const allCompleted = reqMilestones.every((_, i: number) => reqCompletions[i])
+        const allCompleted = reqMilestones.every((_, i: number) => reqCompletions[i] === true)
         if (!allCompleted) return false
       }
       return true
@@ -99,9 +99,9 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
     handleVerifyCompletion,
     handleRemoveEnrollee,
     confirmRemoveEnrollee,
-  } = useEnrolleeActions({ questId, address, quest, addToast, queryClient })
+  } = useEnrolleeActions({ questId, address: address ?? undefined, quest, addToast, queryClient })
 
-  const disputes = useQuestDisputes({ questId, address, quest, milestones, addToast })
+  const disputes = useQuestDisputes({ questId, address: address ?? undefined, quest, milestones, addToast })
   const claims = useQuestClaims({ questId, addToast })
 
   // Build enrollees list for sections
