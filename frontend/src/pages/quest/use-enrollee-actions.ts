@@ -2,7 +2,6 @@ import { useCallback, useState } from "react"
 import { type QueryClient } from "@tanstack/react-query"
 import { questClient } from "@/lib/contracts/quest"
 import { recordReferralEnrollment } from "@/lib/referrals"
-import { queryKeys } from "@/lib/query-keys"
 import type { useToast } from "@/hooks/use-toast"
 
 export interface UseEnrolleeActionsParams {

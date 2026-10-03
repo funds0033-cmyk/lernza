@@ -1,6 +1,6 @@
 // frontend/src/pages/quest.tsx (wired to on-chain data)
 import { useState, useMemo } from "react"
-import { useQueryClient } from "@tanstack/react-query"
+import { useQueryClient, useQuery } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
 import { useWallet } from "@/hooks/use-wallet"
 import {
@@ -10,11 +10,10 @@ import {
   useRewardPool,
   useTotalReservedReward,
 } from "@/hooks/use-quest-data"
-import { queryKeys } from "@/lib/query-keys"
-import { questClient } from "@/lib/contracts/quest"
+import { milestoneClient } from "@/lib/contracts/milestone"
 import { PageMetadata } from "@/components/PageMetadata"
-import { buildQuestMetadata } from "@/lib/questMetadata"
-import type { QuestInfo } from "@/lib/contract-types"
+import { questPageMeta } from "@/lib/page-metadata"
+import { QuestStatus } from "@/lib/contract-types"
 import { TabsNavigation, type QuestTab } from "@/components/quest/TabsNavigation"
 import { TimelineSection } from "@/components/quest/TimelineSection"
 import { ReferralCard } from "@/components/referral/ReferralCard"
@@ -53,6 +52,23 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
   useReferralCapture(questId)
 
   const { data: quest, isLoading: questLoading, error: questError } = useQuest(questId)
+
+  const { data: prerequisitesMet = true, isLoading: prerequisitesLoading } = useQuery({
+    queryKey: ["prerequisitesMet", quest?.id, address],
+    queryFn: async () => {
+      if (!address || !quest?.prerequisiteQuestIds?.length) return true
+      for (const reqId of quest.prerequisiteQuestIds) {
+        const reqMilestones = await milestoneClient.getMilestones(reqId)
+        if (reqMilestones.length === 0) return false
+        const reqCompletions = await milestoneClient.getEnrolleeCompletions(reqId, address)
+        const allCompleted = reqMilestones.every((_, i: number) => reqCompletions[i])
+        if (!allCompleted) return false
+      }
+      return true
+    },
+    enabled: !!address && !!quest?.prerequisiteQuestIds?.length,
+  })
+
   const {
     data: milestonesData,
     isLoading: milestonesLoading,
@@ -94,7 +110,7 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
     [enrolleeAddresses]
   )
 
-  const isLoading = questLoading || milestonesLoading || enrolleesLoading
+  const isLoading = questLoading || milestonesLoading || enrolleesLoading || prerequisitesLoading
   const error = questError || milestonesError || enrolleesError
 
   if (isLoading) {
@@ -124,7 +140,7 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
     description: m.description,
     rewardAmount: Number(m.rewardAmount),
     prerequisiteIds: m.prerequisiteIds,
-    deadline: m.deadline,
+    deadline: m.deadline ?? 0,
   }))
 
   const { isQuestOwner } = disputes
@@ -138,7 +154,10 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
         questName={quest.name}
         questDescription={quest.description}
         isComplete={isComplete}
-        isArchived={quest.status === 1 || String(quest.status) === "Archived"}
+        isArchived={quest.status === QuestStatus.Archived || quest.status === QuestStatus.Cancelled}
+        isSuspended={quest.status === QuestStatus.Suspended}
+        isEnrollDisabled={!prerequisitesMet}
+        enrollDisabledReason={!prerequisitesMet ? "You must complete prerequisite quests before enrolling." : undefined}
         onBack={onBack}
         onAddEnrollee={handleAddEnrollee}
         onAddMilestone={handleAddMilestone}
@@ -236,7 +255,7 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
         </Button>
       </div>
 
-      {quest && <PageMetadata {...buildQuestMetadata(quest as unknown as QuestInfo, questId)} />}
+      {quest && <PageMetadata {...questPageMeta(questId, quest.name, quest.description)} />}
       {/* No ToastContainer here: `App.tsx` already renders a single app-level
           container. A second one produced duplicate containers competing over
           the same toast state. */}

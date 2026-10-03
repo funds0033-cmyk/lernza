@@ -9,11 +9,14 @@ export interface QuestPanelsProps {
   questDescription: string
   isComplete: boolean
   isArchived: boolean
+  isSuspended?: boolean
   onBack: () => void
   onAddEnrollee: () => void
   onAddMilestone: () => void
   onTransferOwnership: (() => void) | undefined
-  onToast: (message: string, type: "success" | "error" | "info" | "warning") => void
+  isEnrollDisabled?: boolean
+  enrollDisabledReason?: string
+  onToast: (message: string, type?: "success" | "error" | "info") => void
   enrolleesCount: number
   milestonesCount: number
   poolBalance: number
@@ -34,10 +37,13 @@ export function QuestPanels(props: QuestPanelsProps) {
           questDescription={props.questDescription}
           isComplete={props.isComplete}
           isArchived={props.isArchived}
+          isSuspended={props.isSuspended}
           onBack={props.onBack}
           onAddEnrollee={props.onAddEnrollee}
           onAddMilestone={props.onAddMilestone}
           onTransferOwnership={props.onTransferOwnership}
+          isEnrollDisabled={props.isEnrollDisabled}
+          enrollDisabledReason={props.enrollDisabledReason}
           onToast={props.onToast}
         />
       </SectionErrorBoundary>
@@ -53,7 +59,7 @@ export function QuestPanels(props: QuestPanelsProps) {
 
         <ProgressPanel
           completedMilestones={props.completedMilestones}
-          totalMilestones={milestones.length}
+          totalMilestones={props.milestonesCount}
           earnedReward={props.earnedReward}
         />
       </SectionErrorBoundary>
