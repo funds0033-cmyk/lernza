@@ -225,7 +225,7 @@ export class MilestoneClient {
    * Drop cached prerequisite data so the next read refetches.
    *
    * Prerequisites are immutable once a milestone exists — they are only written
-   * by `create_milestone_with_prerequisites` — so a cache miss is rare. But a
+   * by `create_milestone_with_prereqs` — so a cache miss is rare. But a
    * newly created milestone has no cached entry to begin with, and a
    * caller-supplied `milestoneId` is not enough to reason about, so this is
    * exposed for the rare caller that has just changed or replaced milestones
@@ -308,7 +308,7 @@ export class MilestoneClient {
     )
   }
 
-  async createMilestoneWithPrerequisites(
+  async createMilestoneWithPrereqs(
     owner: string,
     questId: number,
     title: string,
@@ -320,7 +320,7 @@ export class MilestoneClient {
     prerequisitesKnowledge?: string,
     handlers?: TransactionLifecycleHandlers
   ): Promise<TransactionResult> {
-    const tx = await this.buildTx(owner, "create_milestone_with_prerequisites", [
+    const tx = await this.buildTx(owner, "create_milestone_with_prereqs", [
       new Address(owner).toScVal(),
       nativeToScVal(questId, { type: "u32" }),
       nativeToScVal(title, { type: "string" }),
@@ -677,9 +677,7 @@ export class MilestoneClient {
       description: String(record.description),
       rewardAmount: toBigInt(record.reward_amount),
       requiresPrevious: Boolean(record.requires_previous),
-      prerequisiteIds: Array.isArray(record.prerequisite_ids)
-        ? (record.prerequisite_ids as unknown[]).map((id: unknown) => Number(id))
-        : [],
+      prerequisiteIds: [],
       difficulty: record.difficulty ? String(record.difficulty) : undefined,
       estimatedDuration: record.estimated_duration ? Number(record.estimated_duration) : undefined,
       prerequisitesKnowledge: record.prerequisites_knowledge

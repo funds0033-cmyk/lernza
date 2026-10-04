@@ -25,7 +25,6 @@ export interface QuestDialogsProps {
   isRetrying: boolean
   // Report quest
   isReportOpen: boolean
-  onOpenReport: () => void
   onCloseReport: () => void
   // Remove enrollee
   enrolleeToRemove: { address: string } | null
@@ -49,7 +48,6 @@ export function QuestDialogs(props: QuestDialogsProps) {
     onRetryFailed,
     isRetrying,
     isReportOpen,
-    // onOpenReport is used by the page-level report button
     onCloseReport,
     enrolleeToRemove,
     onCancelRemoveEnrollee,
