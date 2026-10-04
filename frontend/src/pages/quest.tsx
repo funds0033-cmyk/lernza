@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+// frontend/src/pages/quest.tsx (wired to on-chain data)
+import { useState, useMemo } from "react"
+import { useQueryClient, useQuery } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
 import { useWallet } from "@/hooks/use-wallet"
 import { milestoneClient } from "@/lib/contracts/milestone"
@@ -12,6 +13,7 @@ import {
 } from "@/hooks/use-quest-data"
 import type { DisputeOutcome } from "@/lib/contracts/milestone-client"
 import { questClient } from "@/lib/contracts/quest"
+import { milestoneClient } from "@/lib/contracts/milestone"
 import { PageMetadata } from "@/components/PageMetadata"
 import { buildQuestMetadata } from "@/lib/questMetadata"
 import { QuestStatus, type QuestInfo } from "@/lib/contract-types"
@@ -54,17 +56,18 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
 
   const { data: quest, isLoading: questLoading, error: questError } = useQuest(questId)
 
-  const { data: prerequisitesMet = true } = useQuery({
+  const { data: prerequisitesMet = true, isLoading: prerequisitesLoading } = useQuery({
     queryKey: ["prerequisitesMet", quest?.id, address],
     queryFn: async () => {
       if (!address || !quest?.prerequisiteQuestIds?.length) return true
       for (const reqId of quest.prerequisiteQuestIds) {
         const reqMilestones = await milestoneClient.getMilestones(reqId)
         if (reqMilestones.length === 0) return false
-        const allCompleted = await Promise.all(
-          reqMilestones.map((m: { id: number }) => milestoneClient.isCompleted(reqId, m.id, address))
-        )
-        if (!allCompleted.every((c: boolean) => c)) return false
+        // Check each milestone is completed
+        for (const reqMilestone of reqMilestones) {
+          const isCompleted = await milestoneClient.isCompleted(reqId, reqMilestone.id, address)
+          if (!isCompleted) return false
+        }
       }
       return true
     },
@@ -101,9 +104,9 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
     handleVerifyCompletion,
     handleRemoveEnrollee,
     confirmRemoveEnrollee,
-  } = useEnrolleeActions({ questId, address: address || undefined, quest, addToast })
+  } = useEnrolleeActions({ questId, address: address ?? undefined, quest, addToast, queryClient })
 
-  const disputes = useQuestDisputes({ questId, address: address || undefined, quest, milestones, addToast })
+  const disputes = useQuestDisputes({ questId, address: address ?? undefined, quest, milestones, addToast })
   const claims = useQuestClaims({ questId, addToast })
 
   const enrollees = useMemo(
@@ -111,13 +114,12 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
     [enrolleeAddresses]
   )
 
-  const isLoading = questLoading || milestonesLoading || enrolleesLoading
+  const isLoading = questLoading || milestonesLoading || enrolleesLoading || prerequisitesLoading
   const error = questError || milestonesError || enrolleesError
 
   if (isLoading) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-20 text-center sm:px-6">
-        <PageMetadata {...questPageMeta(questId)} />
         <LoadingState message="Loading quest data from chain..." />
       </div>
     )
@@ -142,7 +144,7 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
     description: m.description,
     rewardAmount: Number(m.rewardAmount),
     prerequisiteIds: m.prerequisiteIds,
-    deadline: m.deadline,
+    deadline: m.deadline ?? 0,
   }))
 
   const { isQuestOwner } = disputes
@@ -150,7 +152,6 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
   return (
     <div className="relative mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div className="bg-grid-dots pointer-events-none absolute inset-0 opacity-30" />
-      <PageMetadata {...questPageMeta(questId, quest.name, quest.description)} />
 
       <QuestPanels
         questId={questId}
@@ -258,7 +259,7 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
         </Button>
       </div>
 
-      {quest && <PageMetadata {...buildQuestMetadata(quest as unknown as QuestInfo, questId)} />}
+      {quest && <PageMetadata {...buildQuestMetadata(quest, questId)} />}
       {/* No ToastContainer here: `App.tsx` already renders a single app-level
           container. A second one produced duplicate containers competing over
           the same toast state. */}

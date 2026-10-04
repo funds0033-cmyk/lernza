@@ -117,6 +117,9 @@ pub enum Error {
     /// Contract is administratively paused; all mutating calls are rejected.
     /// System band: code 400 is identical across all Lernza contracts.
     Paused = 400,
+    /// `set_deadline` was called with a non-zero deadline that is in the past
+    /// or equal to the current ledger timestamp.
+    DeadlineInPast = 24,
 }
 
 /// Metadata about a public category, including when its on-chain listing will
@@ -1608,10 +1611,15 @@ impl QuestContract {
 
     /// Update or clear the deadline for a quest. Owner only.
     /// Pass 0 to remove the deadline.
+    /// Returns `Error::DeadlineInPast` if `deadline != 0` and the deadline is
+    /// not strictly in the future (i.e. `deadline <= env.ledger().timestamp()`).
     pub fn set_deadline(env: Env, quest_id: u32, deadline: u64) -> Result<(), Error> {
         Self::require_not_paused(&env)?;
         let mut quest = Self::load_quest(&env, quest_id)?;
         quest.owner.require_auth();
+        if deadline != 0 && deadline <= env.ledger().timestamp() {
+            return Err(Error::DeadlineInPast);
+        }
         quest.deadline = deadline;
         env.storage()
             .persistent()
