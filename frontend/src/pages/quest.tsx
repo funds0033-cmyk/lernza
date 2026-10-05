@@ -3,6 +3,7 @@ import { useState, useMemo } from "react"
 import { useQueryClient, useQuery } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
 import { useWallet } from "@/hooks/use-wallet"
+import { milestoneClient } from "@/lib/contracts/milestone"
 import {
   useQuest,
   useMilestones,
@@ -10,10 +11,12 @@ import {
   useRewardPool,
   useTotalReservedReward,
 } from "@/hooks/use-quest-data"
+import type { DisputeOutcome } from "@/lib/contracts/milestone-client"
+import { questClient } from "@/lib/contracts/quest"
 import { milestoneClient } from "@/lib/contracts/milestone"
 import { PageMetadata } from "@/components/PageMetadata"
-import { questPageMeta } from "@/lib/page-metadata"
-import { QuestStatus } from "@/lib/contract-types"
+import { buildQuestMetadata } from "@/lib/questMetadata"
+import { QuestStatus, type QuestInfo } from "@/lib/contract-types"
 import { TabsNavigation, type QuestTab } from "@/components/quest/TabsNavigation"
 import { TimelineSection } from "@/components/quest/TimelineSection"
 import { ReferralCard } from "@/components/referral/ReferralCard"
@@ -106,7 +109,6 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
   const disputes = useQuestDisputes({ questId, address: address ?? undefined, quest, milestones, addToast })
   const claims = useQuestClaims({ questId, addToast })
 
-  // Build enrollees list for sections
   const enrollees = useMemo(
     () => enrolleeAddresses.map((addr, index) => ({ id: index, address: addr })),
     [enrolleeAddresses]
@@ -257,7 +259,7 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
         </Button>
       </div>
 
-      {quest && <PageMetadata {...questPageMeta(questId, quest.name, quest.description)} />}
+      {quest && <PageMetadata {...buildQuestMetadata(quest, questId)} />}
       {/* No ToastContainer here: `App.tsx` already renders a single app-level
           container. A second one produced duplicate containers competing over
           the same toast state. */}
@@ -273,6 +275,7 @@ export function QuestView({ questId, onBack }: QuestViewProps) {
         onRetryFailed={claims.handleRetryFailed}
         isRetrying={claims.isRetrying}
         isReportOpen={isReportOpen}
+        onOpenReport={() => setIsReportOpen(true)}
         onCloseReport={() => setIsReportOpen(false)}
         enrolleeToRemove={enrolleeToRemove}
         onCancelRemoveEnrollee={() => setEnrolleeToRemove(null)}
